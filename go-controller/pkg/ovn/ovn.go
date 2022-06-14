@@ -111,7 +111,7 @@ type Controller struct {
 	stopChan              <-chan struct{}
 
 	// FIXME DUAL-STACK -  Make IP Allocators more dual-stack friendly
-	masterSubnetAllocator subnetallocator.SubnetAllocator
+	masterSubnetAllocator *subnetallocator.HostSubnetAllocator
 
 	hoMaster *hocontroller.MasterController
 
@@ -266,7 +266,7 @@ func NewOvnController(ovnClient *util.OVNClientset, wf *factory.WatchFactory, st
 		},
 		watchFactory:          wf,
 		stopChan:              stopChan,
-		masterSubnetAllocator: subnetallocator.NewSubnetAllocator(),
+		masterSubnetAllocator: subnetallocator.NewHostSubnetAllocator(),
 		lsManager:             lsm.NewLogicalSwitchManager(),
 		logicalPortCache:      newPortCache(stopChan),
 		namespaces:            make(map[string]*namespaceInfo),
