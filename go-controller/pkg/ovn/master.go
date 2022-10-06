@@ -997,6 +997,31 @@ func (oc *Controller) allocateNodeSubnets(node *kapi.Node) ([]*net.IPNet, []*net
 		expectedHostSubnets = 2
 	}
 
+	if currentHostSubnets > 0 {
+		nodeList, err := oc.kube.GetNodes()
+		if err != nil {
+			return nil, nil, err
+		}
+		for _, otherNode := range nodeList.Items {
+			if node.Name == otherNode.Name {
+				continue
+			}
+			otherHostSubnets, err := util.ParseNodeHostSubnetAnnotation(&otherNode)
+			if err != nil {
+				klog.Infof("Failed to get node %s host subnets annotation: %v", otherNode.Name, err)
+				continue
+			}
+			for _, otherHostSubnet := range otherHostSubnets {
+				for _, hostSubnet := range hostSubnets {
+					if otherHostSubnet.String() == hostSubnet.String() {
+						return nil, nil, fmt.Errorf("error allocating host subnet for node %s: host subnet %s already allocated for node %s",
+							node.Name, hostSubnet.String(), otherNode.Name)
+					}
+				}
+			}
+		}
+	}
+
 	// node already has the expected subnets annotated
 	// assume IP families match, i.e. no IPv6 config and node annotation IPv4
 	if expectedHostSubnets == currentHostSubnets {
