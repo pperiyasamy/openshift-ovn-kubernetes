@@ -982,7 +982,7 @@ func (oc *Controller) addNodeAnnotations(node *kapi.Node, hostSubnets []*net.IPN
 }
 
 func (oc *Controller) allocateNodeSubnets(node *kapi.Node) ([]*net.IPNet, []*net.IPNet, error) {
-	hostSubnets, err := util.ParseNodeHostSubnetAnnotation(node)
+	existingHostSubnets, err := util.ParseNodeHostSubnetAnnotation(node)
 	if err != nil {
 		// Log the error and try to allocate new subnets
 		klog.Infof("Failed to get node %s host subnets annotations: %v", node.Name, err)
@@ -990,14 +990,13 @@ func (oc *Controller) allocateNodeSubnets(node *kapi.Node) ([]*net.IPNet, []*net
 	allocatedSubnets := []*net.IPNet{}
 
 	// OVN can work in single-stack or dual-stack only.
-	currentHostSubnets := len(hostSubnets)
 	expectedHostSubnets := 1
 	// if dual-stack mode we expect one subnet per each IP family
 	if config.IPv4Mode && config.IPv6Mode {
 		expectedHostSubnets = 2
 	}
-
-	if currentHostSubnets > 0 {
+	var hostSubnets []*net.IPNet
+	if len(existingHostSubnets) > 0 {
 		nodeList, err := oc.kube.GetNodes()
 		if err != nil {
 			return nil, nil, err
@@ -1012,16 +1011,17 @@ func (oc *Controller) allocateNodeSubnets(node *kapi.Node) ([]*net.IPNet, []*net
 				continue
 			}
 			for _, otherHostSubnet := range otherHostSubnets {
-				for _, hostSubnet := range hostSubnets {
+				for _, hostSubnet := range existingHostSubnets {
 					if otherHostSubnet.String() == hostSubnet.String() {
-						return nil, nil, fmt.Errorf("error allocating host subnet for node %s: host subnet %s already allocated for node %s",
-							node.Name, hostSubnet.String(), otherNode.Name)
+						klog.Errorf("host subnet %s already allocated for node %s", hostSubnet.String(), otherNode.Name)
+						continue
 					}
+					hostSubnets = append(hostSubnets, hostSubnet)
 				}
 			}
 		}
 	}
-
+	currentHostSubnets := len(hostSubnets)
 	// node already has the expected subnets annotated
 	// assume IP families match, i.e. no IPv6 config and node annotation IPv4
 	if expectedHostSubnets == currentHostSubnets {
