@@ -9,8 +9,8 @@ import (
 	"strings"
 
 	ocphacke2e "github.com/ovn-org/ovn-kubernetes/openshift-hack/e2e"
-	"github.com/ovn-org/ovn-kubernetes/test/e2e/deploymentconfig"
-	"github.com/ovn-org/ovn-kubernetes/test/e2e/infraprovider"
+	"github.com/ovn-org/ovn-kubernetes/openshift-hack/e2e/pkg/deploymentconfig"
+	"github.com/ovn-org/ovn-kubernetes/openshift-hack/e2e/pkg/infraprovider"
 
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/ginkgo/v2/reporters"
@@ -82,10 +82,11 @@ func initializeTestFramework(provider string) error {
 	}
 	testContext.DumpLogsOnFailure = true
 	testContext.ReportDir = os.Getenv("TEST_JUNIT_DIR")
-	err = infraprovider.Set(cfg)
-	framework.ExpectNoError(err, "must configure infrastructure provider")
-	err = deploymentconfig.Set(cfg)
-	framework.ExpectNoError(err, "must configure deployment config")
+	infraConfig, err := infraprovider.New(cfg)
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
+	gomega.Expect(infraConfig).NotTo(gomega.BeNil())
+	deploymentCfg := deploymentconfig.New()
+	gomega.Expect(deploymentCfg).NotTo(gomega.BeNil())
 	return nil
 }
 
