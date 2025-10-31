@@ -832,7 +832,7 @@ func (e *EgressIPController) addPodEgressIPAssignments(ni util.NetInfo, name str
 			}
 			// Detect stale EIP status entries (same EgressIP reassigned to a different node)
 			// and queue the outdated entry for cleanup.
-			if staleStatus := podState.egressStatuses.hasStaleEIPStatus(status); staleStatus != nil {
+			if staleStatus := podState.egressStatuses.findConflictingEIPStatus(status); staleStatus != nil {
 				staleAssignments = append(staleAssignments, *staleStatus)
 			}
 		}
@@ -1055,8 +1055,13 @@ func (e *EgressIPController) deletePodEgressIPAssignments(ni util.NetInfo, name 
 		podStatus.standbyEgressIPNames.Delete(name)
 		return nil
 	}
-	for _, statusToRemove := range statusesToRemove {
-		if ok := podStatus.egressStatuses.contains(statusToRemove); !ok {
+	for _, requestedStatus := range statusesToRemove {
+		statusToRemove := requestedStatus
+		// TODO: rename hasStaleEIPStatus method name if this is needed.
+		if latestAssignment := podStatus.egressStatuses.findConflictingEIPStatus(statusToRemove); latestAssignment != nil {
+			klog.V(2).Infof("Different pod egress IP status: %v found for EgressIP: %s and pod: %s/%s", *latestAssignment, name, pod.Name, pod.Namespace)
+			statusToRemove = *latestAssignment
+		} else if ok := podStatus.egressStatuses.contains(statusToRemove); !ok {
 			// we can continue here since this pod was not managed by this statusToRemove
 			continue
 		}
@@ -2300,10 +2305,9 @@ func (e egressStatuses) contains(potentialStatus egressipv1.EgressIPStatusItem) 
 	return false
 }
 
-// hasStaleEIPStatus checks for stale EIP status entries already in cache.
-// This addresses the race condition where an EIP is reassigned to a different node
-// but the cache still contains the old assignment, leading to stale SNAT/LRP entries.
-func (e egressStatuses) hasStaleEIPStatus(potentialStatus egressipv1.EgressIPStatusItem) *egressipv1.EgressIPStatusItem {
+// findConflictingEIPStatus searches the cache for an EgressIP status entry that
+// conflicts with the given potentialStatus.
+func (e egressStatuses) findConflictingEIPStatus(potentialStatus egressipv1.EgressIPStatusItem) *egressipv1.EgressIPStatusItem {
 	var staleStatus *egressipv1.EgressIPStatusItem
 	for status := range e.statusMap {
 		if status.EgressIP == potentialStatus.EgressIP &&
