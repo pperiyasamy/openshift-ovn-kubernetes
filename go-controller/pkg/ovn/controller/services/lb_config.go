@@ -160,7 +160,7 @@ var protos = []corev1.Protocol{
 //   - services with NodePort set but *without* ExternalTrafficPolicy=Local or
 //     affinity timeout set.
 func buildServiceLBConfigs(service *corev1.Service, endpointSlices []*discovery.EndpointSlice, nodeInfos []nodeInfo,
-	useLBGroup, useTemplates bool) (perNodeConfigs, templateConfigs, clusterConfigs []lbConfig) {
+	useLBGroup, useTemplates bool, netInfo util.NetInfo) (perNodeConfigs, templateConfigs, clusterConfigs []lbConfig) {
 
 	needsAffinityTimeout := hasSessionAffinityTimeOut(service)
 
@@ -255,7 +255,7 @@ func buildServiceLBConfigs(service *corev1.Service, endpointSlices []*discovery.
 		// - OCP only HACK: It's an openshift-dns:default-dns service
 		//
 		// In that case, we need to create per-node LBs.
-		if hasHostEndpoints(clusterEndpoints.V4IPs) || hasHostEndpoints(clusterEndpoints.V6IPs) || internalTrafficLocal ||
+		if hasHostEndpoints(clusterEndpoints.V4IPs, netInfo) || hasHostEndpoints(clusterEndpoints.V6IPs, netInfo) || internalTrafficLocal ||
 			// OCP only hack begin
 			(service.Namespace == "openshift-dns" && service.Name == "dns-default") {
 			// OCP only hack end
