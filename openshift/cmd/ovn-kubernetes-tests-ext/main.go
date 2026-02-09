@@ -4,10 +4,15 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ovn-org/ovn-kubernetes/openshift/test"
-	"github.com/ovn-org/ovn-kubernetes/openshift/test/generated"
+	"github.com/ovn-kubernetes/ovn-kubernetes/openshift/test"
+	ocpdeploymentconfig "github.com/ovn-kubernetes/ovn-kubernetes/openshift/test/deploymentconfig"
+	"github.com/ovn-kubernetes/ovn-kubernetes/openshift/test/generated"
+	ocpinfraprovider "github.com/ovn-kubernetes/ovn-kubernetes/openshift/test/infraprovider"
+
 	// import ovn-kubernetes tests
-	_ "github.com/ovn-org/ovn-kubernetes/test/e2e"
+	_ "github.com/ovn-kubernetes/ovn-kubernetes/test/e2e"
+	"github.com/ovn-kubernetes/ovn-kubernetes/test/e2e/deploymentconfig"
+	"github.com/ovn-kubernetes/ovn-kubernetes/test/e2e/infraprovider"
 
 	"github.com/openshift-eng/openshift-tests-extension/pkg/cmd"
 	"github.com/openshift-eng/openshift-tests-extension/pkg/extension"
@@ -63,9 +68,25 @@ func main() {
 		panic(err)
 	}
 
+	kubeConfig, err := getKubeConfig()
+	if err != nil {
+		panic(err)
+	}
+
+	// Initialize test framework first.
+	if err := initializeTestFramework(kubeConfig, os.Getenv("TEST_PROVIDER")); err != nil {
+		panic(err)
+	}
+	ocpInfra, err := ocpinfraprovider.New(kubeConfig)
+	if err != nil {
+		panic(err)
+	}
+	infraprovider.Set(ocpInfra)
+	deploymentconfig.Set(ocpdeploymentconfig.New())
+
 	// Initialization for kube ginkgo test framework needs to run before all tests execute
 	specs.AddBeforeAll(func() {
-		if err := initializeTestFramework(os.Getenv("TEST_PROVIDER")); err != nil {
+		if initErr := ocpInfra.InitProvider(); initErr != nil {
 			panic(err)
 		}
 	})
