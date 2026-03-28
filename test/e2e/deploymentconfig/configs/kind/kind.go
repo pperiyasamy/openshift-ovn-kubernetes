@@ -27,6 +27,9 @@ func IsKind() bool {
 type kind struct{}
 
 func New() api.DeploymentConfig {
+	if !IsKind() {
+		panic("Deployment Config must be KinD type")
+	}
 	return kind{}
 }
 
