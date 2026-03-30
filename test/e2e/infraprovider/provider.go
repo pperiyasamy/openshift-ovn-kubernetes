@@ -4,12 +4,6 @@ import (
 	"github.com/ovn-kubernetes/ovn-kubernetes/test/e2e/infraprovider/api"
 )
 
-type Name string
-
-func (n Name) String() string {
-	return string(n)
-}
-
 var infraProvider api.Provider
 
 // Set infrastructure provider.
