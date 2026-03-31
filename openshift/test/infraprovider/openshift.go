@@ -399,7 +399,12 @@ func (o *openshift) ListNetworks() ([]string, error) {
 
 func (o *openshift) NewTestContext() api.Context {
 	context := &testcontext.TestContext{}
-	ginkgo.DeferCleanup(context.CleanUp)
+	ginkgo.DeferCleanup(func() {
+		err := context.CleanUp()
+		if err != nil {
+			ginkgo.Fail(fmt.Sprintf("Infrastructure cleanup failed: %v", err))
+		}
+	})
 	co := &contextOpenshift{
 		TestContext: context,
 		engine:      o.engine.WithTestContext(context),
