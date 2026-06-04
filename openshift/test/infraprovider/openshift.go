@@ -99,6 +99,10 @@ func (o *OpenshiftInfraProvider) configureOVNGatewayMode() {
 	}
 }
 
+func (o *OpenshiftInfraProvider) CheckForEgressIP() bool {
+	return o.clusterInfra != nil
+}
+
 // CheckForEVPN checks all EVPN prerequisites
 func (o *OpenshiftInfraProvider) CheckForEVPN() bool {
 	if o.operNetwork == nil {
